@@ -1,475 +1,128 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BookScan AI</title>
-<style>
-* { box-sizing:border-box; margin:0; padding:0; }
-body { min-height:100vh; background:linear-gradient(160deg,#1a0d05 0%,#3a1a08 60%,#2c1508 100%); font-family:Georgia,serif; color:#2a1200; }
-@keyframes spin { to { transform:rotate(360deg); } }
-@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-@keyframes sweep { 0%{top:8%} 100%{top:88%} }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BookScan AI — age-appropriate book guidance</title>
+  <meta name="description" content="Scan a book by title, author, or ISBN and get a friendly, age-aware verdict with themes, content notes, and similar reads." />
+  <meta name="theme-color" content="#6d5efc" />
 
-/* ── header ── */
-.hdr { background:#0e0603; padding:20px 20px 16px; text-align:center; border-bottom:1px solid rgba(212,169,106,.15); }
-.hdr h1 { font-size:25px; font-weight:900; color:#f5e0b0; letter-spacing:-.5px; margin:3px 0 2px; }
-.hdr p { color:#9a7040; font-size:12px; font-style:italic; }
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
 
-.wrap { max-width:540px; margin:0 auto; padding:18px 13px 60px; }
-.card { background:rgba(255,250,240,.97); border-radius:16px; padding:20px 18px; box-shadow:0 8px 40px rgba(0,0,0,.3); margin-bottom:14px; animation:fadeIn .4s ease; }
+  <!-- App styles -->
+  <link rel="stylesheet" href="./css/styles.css" />
 
-/* ── key screen ── */
-.key-inp { width:100%; padding:11px 13px; border-radius:9px; border:1.5px solid #d4a96a; font-size:13px; font-family:monospace; background:#fffaf3; color:#2a1200; outline:none; margin-bottom:10px; }
-.key-inp:focus { border-color:#c0732a; box-shadow:0 0 0 3px rgba(192,115,42,.18); }
-.key-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(139,69,19,.08); border:1px solid rgba(139,69,19,.2); border-radius:20px; padding:3px 10px; font-size:11px; color:#8b4513; cursor:pointer; margin-bottom:12px; }
-
-/* ── scan overlay ── */
-#scanOverlay { display:none; position:fixed; inset:0; background:rgba(6,3,1,.97); z-index:1000; flex-direction:column; align-items:center; justify-content:center; }
-#scanOverlay.open { display:flex; }
-#vfWrap { position:relative; width:min(88vw,360px); aspect-ratio:3/4; border-radius:18px; overflow:hidden; box-shadow:0 0 0 2px rgba(212,169,106,.3),0 16px 60px rgba(0,0,0,.7); }
-#scanVid { width:100%; height:100%; object-fit:cover; display:block; }
-.corner { position:absolute; width:38px; height:38px; }
-.tl{top:0;left:0;border-top:3px solid #d4a96a;border-left:3px solid #d4a96a;border-radius:12px 0 0 0}
-.tr{top:0;right:0;border-top:3px solid #d4a96a;border-right:3px solid #d4a96a;border-radius:0 12px 0 0}
-.bl{bottom:0;left:0;border-bottom:3px solid #d4a96a;border-left:3px solid #d4a96a;border-radius:0 0 0 12px}
-.br{bottom:0;right:0;border-bottom:3px solid #d4a96a;border-right:3px solid #d4a96a;border-radius:0 0 12px 0}
-#scanLine { position:absolute; left:8%; right:8%; height:2px; background:linear-gradient(90deg,transparent,#d4a96a,#ffcc66,#d4a96a,transparent); box-shadow:0 0 12px 4px rgba(212,169,106,.5); animation:sweep 2s ease-in-out infinite alternate; }
-#scanStatus { margin-top:18px; color:#c09050; font-size:13px; font-style:italic; text-align:center; padding:0 24px; max-width:340px; line-height:1.5; }
-.s-btns { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; justify-content:center; }
-.s-btn { padding:9px 15px; border-radius:22px; font-family:Georgia,serif; font-size:12.5px; cursor:pointer; }
-
-/* ── upload modal ── */
-#uploadModal { display:none; position:fixed; inset:0; background:rgba(6,3,1,.96); z-index:999; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
-#uploadModal.open { display:flex; }
-.m-box { width:100%; max-width:400px; }
-.m-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-.close-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#f5e0b0; width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; }
-.dropzone { border:2px dashed rgba(212,169,106,.35); border-radius:14px; min-height:175px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; background:rgba(255,250,240,.03); margin-bottom:11px; transition:border-color .2s; }
-.dropzone:hover { border-color:#d4a96a; }
-.dropzone img { width:100%; max-height:230px; object-fit:contain; }
-.m-btns { display:flex; gap:10px; }
-.ext-btn { flex:2; padding:12px; border-radius:10px; border:none; background:linear-gradient(135deg,#8b4513,#c0732a); color:#fff; font-size:14px; font-family:Georgia,serif; font-weight:700; cursor:pointer; }
-.ret-btn { flex:1; padding:12px; border-radius:10px; border:1.5px solid rgba(212,169,106,.4); background:transparent; color:#d4a96a; font-size:13px; font-family:Georgia,serif; cursor:pointer; }
-
-/* ── main ui ── */
-.scan-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-.scan-btn { padding:13px 8px; border:none; border-radius:12px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px; transition:opacity .15s,transform .15s; }
-.scan-btn:hover { opacity:.87; transform:translateY(-1px); }
-.divider { display:flex; align-items:center; gap:8px; margin:11px 0; }
-.divider hr { flex:1; border:none; border-top:1px solid #e8d5b7; }
-.divider span { color:#b07040; font-size:11px; font-style:italic; }
-input[type=text] { width:100%; padding:11px 13px; border-radius:9px; border:1.5px solid #d4a96a; font-size:14px; font-family:Georgia,serif; background:#fffaf3; color:#2a1200; outline:none; transition:border-color .2s,box-shadow .2s; }
-input[type=text]:focus { border-color:#c0732a; box-shadow:0 0 0 3px rgba(192,115,42,.18); }
-.chips { display:flex; flex-wrap:wrap; gap:5px; margin:8px 0 13px; }
-.chip { padding:5px 11px; border-radius:20px; font-size:12px; font-family:Georgia,serif; cursor:pointer; border:1.5px solid #d4a96a; background:#fdf6ec; color:#6b3a00; transition:all .12s; }
-.chip.active { background:#8b4513; border-color:#8b4513; color:#fff; font-weight:700; }
-.main-btn { width:100%; padding:12px; border-radius:10px; border:none; font-size:14px; font-weight:700; font-family:Georgia,serif; cursor:pointer; transition:opacity .15s,transform .15s; background:#8b4513; color:#fff; box-shadow:0 3px 14px rgba(139,69,19,.22); }
-.main-btn:hover { opacity:.87; transform:translateY(-1px); }
-.main-btn:disabled { background:#c8a070; cursor:not-allowed; transform:none; }
-.spinner { width:32px; height:32px; border-radius:50%; border:3px solid #e8d5b7; border-top-color:#8b4513; animation:spin .8s linear infinite; margin:0 auto; }
-.ghost-btn { flex:1; padding:10px 6px; border-radius:9px; border:1.5px solid #d4a96a; background:transparent; color:#6b3a00; font-size:12px; font-family:Georgia,serif; font-weight:700; cursor:pointer; transition:background .13s; }
-.ghost-btn:hover { background:rgba(212,169,106,.15); }
-.err-box { background:#faeaea; border:1.5px solid #e07070; border-radius:10px; padding:11px 14px; color:#8b1a1a; font-size:13px; margin-bottom:13px; line-height:1.5; }
-.hint { text-align:center; color:rgba(245,224,176,.28); padding:12px; font-style:italic; font-size:13px; }
-.st-box { padding:8px 12px; border-radius:8px; margin-bottom:10px; font-size:13px; text-align:center; }
-</style>
+  <!-- Favicon (inline SVG) -->
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%236d5efc"/><path d="M16 14h28a6 6 0 016 6v30a6 6 0 01-6 6H22a6 6 0 01-6-6V14z" fill="white"/><path d="M22 20h18v3H22zm0 6h18v3H22zm0 6h12v3H22z" fill="%236d5efc"/></svg>' />
 </head>
+
 <body>
+  <a class="skip-link" href="#main">Skip to main content</a>
 
-<!-- ── Live Scanner Overlay ── -->
-<div id="scanOverlay">
-  <div style="position:absolute;top:0;left:0;right:0;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,3,1,.95),transparent)">
-    <span style="font-family:Georgia,serif;color:#f5e0b0;font-size:18px;font-weight:700">📷 Scan Barcode</span>
-    <button class="close-btn" onclick="closeScanner()">✕</button>
-  </div>
-  <div id="vfWrap">
-    <video id="scanVid" muted playsinline></video>
-    <canvas id="scanCanvas" style="display:none"></canvas>
-    <div class="corner tl"></div><div class="corner tr"></div>
-    <div class="corner bl"></div><div class="corner br"></div>
-    <div id="scanLine"></div>
-  </div>
-  <div id="scanStatus">Requesting camera…</div>
-  <div class="s-btns">
-    <button class="s-btn" id="flipBtn" style="display:none;background:rgba(212,169,106,.12);border:1px solid rgba(212,169,106,.3);color:#f5e0b0" onclick="flipCam()">🔄 Flip</button>
-    <button class="s-btn" style="background:rgba(45,90,27,.3);border:1px solid rgba(74,138,42,.4);color:#a8d878" onclick="closeScanner();openUpload()">🖼️ Upload Photo</button>
-    <button class="s-btn" style="background:rgba(139,69,19,.25);border:1px solid rgba(139,69,19,.4);color:#f5e0b0" onclick="closeScanner()">⌨️ Type ISBN</button>
-  </div>
-  <div style="position:absolute;bottom:18px;color:rgba(192,144,80,.38);font-size:11px;font-style:italic">Point at the barcode on back of book</div>
-</div>
+  <!-- Top bar -->
+  <header class="topbar" role="banner">
+    <a class="brand" href="./" aria-label="BookScan AI home">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M8 7h14a4 4 0 014 4v14a4 4 0 01-4 4H11a3 3 0 01-3-3V7z" fill="white"/><path d="M11 10h10v2H11zm0 4h10v2H11zm0 4h7v2h-7z" fill="currentColor"/></svg>
+      </span>
+      <span class="brand__name">BookScan <span class="brand__ai">AI</span></span>
+    </a>
 
-<!-- ── Upload Modal ── -->
-<div id="uploadModal">
-  <div class="m-box">
-    <div class="m-hdr">
-      <span style="color:#f5e0b0;font-size:17px;font-weight:700">🖼️ Upload Book Photo</span>
-      <button class="close-btn" onclick="closeUpload()">✕</button>
-    </div>
-    <div class="dropzone" onclick="document.getElementById('fileInp').click()" ondrop="handleDrop(event)" ondragover="event.preventDefault()">
-      <img id="prevImg" style="display:none" alt="">
-      <div id="dropHint">
-        <div style="font-size:38px;text-align:center;margin-bottom:8px">📷</div>
-        <div style="color:#f5e0b0;font-size:14px;font-weight:700;text-align:center">Tap to choose photo</div>
-        <div style="color:rgba(192,144,80,.55);font-size:11px;margin-top:4px;text-align:center">Barcode · Cover · Spine</div>
+    <nav class="topbar__nav" aria-label="Primary">
+      <a class="nav-link" href="#how">How it works</a>
+      <a class="nav-link" href="https://github.com/Srishti39/bookscan-ai" target="_blank" rel="noopener">GitHub</a>
+      <button id="themeToggle" class="iconbtn iconbtn--theme" aria-label="Toggle dark mode" aria-pressed="false" title="Toggle theme (T)">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.66-6.66l1.41-1.41M4.93 19.07l1.41-1.41M17.66 17.66l1.41 1.41M4.93 4.93l1.41 1.41M12 7a5 5 0 100 10 5 5 0 000-10z"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main id="main" class="layout">
+    <!-- Sidebar: history -->
+    <aside class="sidebar" aria-label="Scan history">
+      <div id="history" class="history"></div>
+    </aside>
+
+    <!-- Main column -->
+    <section class="content">
+      <!-- Hero -->
+      <div class="hero">
+        <h1 class="hero__title">
+          Is this book right for<br />
+          <span class="hero__accent">your reader?</span>
+        </h1>
+        <p class="hero__sub">
+          Scan a title, author, or ISBN. Get a warm, age-aware verdict with themes, content notes, and similar reads — in seconds.
+        </p>
+      </div>
+
+      <!-- Card: query -->
+      <div class="card">
+        <form id="scanForm" class="searchbar" role="search" autocomplete="off">
+          <label class="searchbar__label" for="query">Book title, author, or ISBN</label>
+          <div class="searchbar__row">
+            <div class="field">
+              <svg class="field__icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 105.3 14l5 5 1.4-1.4-5-5A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
+              <input id="query" type="text" placeholder='Try "Harry Potter" or 9780439708180' aria-label="Search a book" />
+            </div>
+            <button type="button" id="openScanner" class="btn btn--ghost" title="Scan ISBN barcode">
+              📷 <span class="hide-sm">Scan</span>
+            </button>
+            <button id="scanBtn" type="submit" class="btn btn--primary">
+              <span>Analyze</span>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M5 12h12l-4-4 1.4-1.4L20.8 12l-6.4 6.4L13 17l4-4H5z"/></svg>
+            </button>
+          </div>
+
+          <div class="divider"><span>reading for</span></div>
+
+          <div id="ageSegments" class="segments" role="group" aria-label="Age preference">
+            <button type="button" class="segment" data-age="kid"   aria-pressed="false">👧 Kid <span class="segment__hint">6–10</span></button>
+            <button type="button" class="segment" data-age="teen"  aria-pressed="true">🧑 Teen <span class="segment__hint">11–15</span></button>
+            <button type="button" class="segment" data-age="adult" aria-pressed="false">🧑‍🎓 Adult <span class="segment__hint">16+</span></button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Result -->
+      <div id="result" class="result" aria-live="polite"></div>
+
+      <!-- How it works -->
+      <section id="how" class="how">
+        <h2>How it works</h2>
+        <ol class="how__steps">
+          <li><strong>Look up</strong> — we fetch metadata from Open Library.</li>
+          <li><strong>Analyze</strong> — Groq-powered LLM reads themes &amp; reading level.</li>
+          <li><strong>Tailor</strong> — results are adjusted to the reader's age.</li>
+        </ol>
+        <p class="how__note">Nothing is stored on a server. Your scan history lives only in your browser.</p>
+      </section>
+    </section>
+  </main>
+
+  <!-- Scanner overlay -->
+  <div id="scannerOverlay" class="overlay" hidden>
+    <div class="overlay__panel" role="dialog" aria-modal="true" aria-labelledby="scannerTitle">
+      <header class="overlay__head">
+        <h2 id="scannerTitle">Scan ISBN barcode</h2>
+        <button id="closeScanner" class="iconbtn" aria-label="Close scanner">✕</button>
+      </header>
+      <div class="overlay__body">
+        <video id="scannerVideo" class="scanner__video" muted playsinline></video>
+        <div class="scanner__hint">Point your camera at the barcode on the back of the book.</div>
       </div>
     </div>
-    <input type="file" id="fileInp" accept="image/*" capture="environment" style="display:none" onchange="loadImg(this.files[0])">
-    <div id="imgSt" style="display:none" class="st-box"></div>
-    <div class="m-btns">
-      <button class="ext-btn" id="extBtn" style="display:none" onclick="extractImg()">🔍 Identify Book</button>
-      <button class="ret-btn" id="retBtn" onclick="resetImg()">📁 Browse</button>
-    </div>
-    <div style="margin-top:9px;color:rgba(192,144,80,.38);font-size:11px;text-align:center;font-style:italic">Upload barcode or cover · AI reads it</div>
-  </div>
-</div>
-
-<!-- ── Header ── -->
-<div class="hdr">
-  <div style="font-size:28px">📚</div>
-  <h1>BookScan AI</h1>
-  <p>Scan · Summarise · Age-Check any book</p>
-</div>
-
-<div class="wrap">
-
-  <!-- Key screen -->
-  <div class="card" id="keyCard" style="display:none">
-    <div style="font-size:26px;text-align:center;margin-bottom:10px">🔑</div>
-    <div style="font-size:15px;font-weight:700;color:#3a1a00;margin-bottom:5px;text-align:center">Enter your Groq API Key</div>
-    <div style="font-size:12px;color:#8b5e3c;margin-bottom:14px;text-align:center;line-height:1.6">Free at <strong>console.groq.com</strong> → API Keys → Create<br>Stored only in your browser</div>
-    <input class="key-inp" id="keyInp" type="password" placeholder="gsk_..." onkeydown="if(event.key==='Enter')saveKey()">
-    <button class="main-btn" onclick="saveKey()">Save & Continue →</button>
-    <div style="font-size:11px;color:#8b5e3c;margin-top:9px;text-align:center">Saved in localStorage on this device only</div>
   </div>
 
-  <!-- Loading -->
-  <div class="card" id="loadCard" style="display:none;text-align:center;padding:42px 22px">
-    <div style="font-size:34px;margin-bottom:11px">🔍</div>
-    <div class="spinner"></div>
-    <div id="loadMsg" style="margin-top:13px;color:#6b3a00;font-style:italic;font-size:14px">Searching…</div>
-  </div>
+  <footer class="footer">
+    <p>Built with ❤ using <a href="https://groq.com" target="_blank" rel="noopener">Groq</a> + <a href="https://openlibrary.org" target="_blank" rel="noopener">Open Library</a>. Deployed on <a href="https://vercel.com" target="_blank" rel="noopener">Vercel</a>.</p>
+  </footer>
 
-  <!-- Input -->
-  <div class="card" id="inputCard" style="display:none">
-    <div style="text-align:right;margin-bottom:10px">
-      <span class="key-badge" onclick="changeKey()">🔑 API key set &nbsp;✎</span>
-    </div>
-    <div class="scan-grid">
-      <button class="scan-btn" style="background:linear-gradient(135deg,#8b4513,#c0732a);box-shadow:0 4px 16px rgba(139,69,19,.3)" onclick="openScanner()">
-        <span style="font-size:22px">📷</span>
-        <span style="color:#fff;font-size:13px;font-weight:700;font-family:Georgia,serif">Live Scan</span>
-        <span style="color:rgba(255,255,255,.6);font-size:10px">Camera</span>
-      </button>
-      <button class="scan-btn" style="background:linear-gradient(135deg,#2d5a1b,#4a8a2a);box-shadow:0 4px 16px rgba(45,90,27,.3)" onclick="openUpload()">
-        <span style="font-size:22px">🖼️</span>
-        <span style="color:#fff;font-size:13px;font-weight:700;font-family:Georgia,serif">Upload Photo</span>
-        <span style="color:rgba(255,255,255,.6);font-size:10px">Desktop ✓</span>
-      </button>
-    </div>
-    <div class="divider"><hr><span>or type manually</span><hr></div>
-    <input type="text" id="qInp" placeholder="Book title, author, or ISBN…"
-           oninput="document.getElementById('aBtn').disabled=!this.value.trim()"
-           onkeydown="if(event.key==='Enter')analyse()">
-    <div style="font-size:12px;font-weight:700;color:#5a2d00;margin:11px 0 6px">👤 Check for age group:</div>
-    <div class="chips" id="chips"></div>
-    <button class="main-btn" id="aBtn" disabled onclick="analyse()">✨ Analyse Book</button>
-  </div>
-
-  <div class="err-box" id="errBox" style="display:none"></div>
-  <div id="resSection" style="display:none"><div class="card" id="resCard"></div></div>
-  <div class="hint" id="hint" style="display:none">Upload a photo or type a title / ISBN to get started</div>
-</div>
-
-<script>
-// ── Config ────────────────────────────────────────────────────────────────────────────
-  const PROXY = '/api/groq';
-  const TM = 'llama-3.3-70b-versatile';
-  const VM = 'meta-llama/llama-4-scout-17b-16e-instruct';
-  const AGES = [
-    {l:'Child (6-8)',   v:'children aged 6-8'},
-    {l:'Preteen (9-12)',v:'preteens aged 9-12'},
-    {l:'Teen (13-17)',  v:'teenagers aged 13-17'},
-    {l:'Adult 18+',     v:'adults aged 18 and above'},
-  ];
-  let age='teenagers aged 13-17', imgB64=null, imgMime='image/jpeg', liveTmr=null, scanStream=null, scanCams=[], camIdx=0, scanDone=false;
-
-  // ── Init ───────────────────────────────────────────────────────────────────────────────
-  window.addEventListener('DOMContentLoaded', () => {
-    // age chips
-    const el = document.getElementById('chips');
-    AGES.forEach(a => {
-      const b = document.createElement('button');
-      b.className = 'chip' + (a.v === age ? ' active' : '');
-      b.textContent = a.l;
-      b.onclick = () => { age = a.v; el.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); b.classList.add('active'); };
-      el.appendChild(b);
-    });
-    // show key or main
-    getKey() ? showMain() : showKeyScreen();
-  });
-
-  // ── Key ─────────────────────────────────────────────────────────────────────────────────
-  function getKey() { return localStorage.getItem('groq_key') || ''; }
-  function saveKey() {
-    const k = document.getElementById('keyInp').value.trim();
-    if (!k.startsWith('gsk_')) { alert('Key should start with gsk_ — get a free one at console.groq.com'); return; }
-    localStorage.setItem('groq_key', k);
-    hide('keyCard'); showMain();
-  }
-  function changeKey() {
-    document.getElementById('keyInp').value = getKey();
-    hide('inputCard'); hide('resSection'); hide('hint'); hide('errBox');
-    show('keyCard');
-  }
-  function showKeyScreen() { hide('inputCard'); hide('hint'); show('keyCard'); }
-  function showMain()      { hide('keyCard'); show('inputCard'); show('hint'); }
-
-  // ── Helpers ────────────────────────────────────────────────────────────────────────────
-  function show(id) { document.getElementById(id).style.display = 'block'; }
-  function hide(id) { document.getElementById(id).style.display = 'none'; }
-  function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-  function parseJ(r){ const a=r.indexOf('{'), b=r.lastIndexOf('}'); if(a<0||b<0) throw new Error('Bad response'); return JSON.parse(r.slice(a,b+1)); }
-
-  // ── Groq call ───────────────────────────────────────────────────────────────────────
-  async function groq(messages, model, max=1400) {
-    const r = await fetch(PROXY, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'X-Groq-Key': getKey() },
-      body: JSON.stringify({ model, max_tokens:max, temperature:0.3, messages })
-    });
-
-    // Check content-type before parsing — catch HTML 404 pages
-    const ct = r.headers.get('content-type') || '';
-    if (!ct.includes('application/json')) {
-      const txt = await r.text();
-      throw new Error('Proxy not reachable (got HTML). Check Vercel deployment. Status: ' + r.status);
-    }
-
-    const d = await r.json();
-    if (d.error) {
-      if (d.error.message === 'NO_KEY') { changeKey(); throw new Error('Enter your Groq API key first.'); }
-      throw new Error(d.error.message || JSON.stringify(d.error));
-    }
-    return d.choices?.[0]?.message?.content || '';
-  }
-
-  // ── Loading ───────────────────────────────────────────────────────────────────────
-  const LM = ['Searching for the book…','Reading reviews…','Analysing content…','Checking age suitability…'];
-  function startLoad() {
-    if (liveTmr) clearInterval(liveTmr);
-    hide('inputCard'); show('loadCard'); hide('resSection'); hide('errBox'); hide('hint');
-    let i=0; document.getElementById('loadMsg').textContent = LM[0];
-    liveTmr = setInterval(() => { i=Math.min(i+1,LM.length-1); document.getElementById('loadMsg').textContent=LM[i]; }, 2200);
-  }
-  function stopLoad() { if(liveTmr) clearInterval(liveTmr); }
-  function showErr(m) {
-    stopLoad(); hide('loadCard'); show('inputCard'); show('hint');
-    const el = document.getElementById('errBox');
-    el.textContent = '⚠️ ' + m; show('errBox');
-  }
-
-  // ── Live Scanner ───────────────────────────────────────────────────────────────────────────
-  function openScanner() {
-    scanDone = false;
-    document.getElementById('scanOverlay').classList.add('open');
-    startCam(null);
-  }
-  function closeScanner() {
-    document.getElementById('scanOverlay').classList.remove('open');
-    if (scanStream) { scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
-  }
-  function setScanSt(t) { document.getElementById('scanStatus').textContent = t; }
-
-  async function startCam(deviceId) {
-    try {
-      if (scanStream) scanStream.getTracks().forEach(t=>t.stop());
-      const constraints = deviceId
-        ? { video:{ deviceId:{ exact:deviceId } } }
-        : { video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 } } };
-      scanStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      if (!deviceId) {
-        const devs = await navigator.mediaDevices.enumerateDevices();
-        scanCams = devs.filter(d=>d.kind==='videoinput');
-        const backIdx = scanCams.findIndex(d=>/back|rear|environment/i.test(d.label));
-        camIdx = backIdx >= 0 ? backIdx : scanCams.length - 1;
-        if (scanCams.length > 1) document.getElementById('flipBtn').style.display = 'block';
-      }
-
-      const v = document.getElementById('scanVid');
-      v.srcObject = scanStream;
-      await v.play();
-      setScanSt('Point camera at the barcode on the back of the book…');
-
-      const canvas = document.getElementById('scanCanvas');
-      const ctx = canvas.getContext('2d');
-      let detector = null;
-      if ('BarcodeDetector' in window) {
-        detector = new window.BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','qr_code'] });
-      }
-
-      const loop = async () => {
-        if (scanDone || !scanStream) return;
-        if (v.readyState === v.HAVE_ENOUGH_DATA) {
-          canvas.width=v.videoWidth; canvas.height=v.videoHeight;
-          ctx.drawImage(v,0,0);
-          if (detector) {
-            try {
-              const bc = await detector.detect(canvas);
-              if (bc.length) {
-                scanDone = true;
-                closeScanner();
-                document.getElementById('qInp').value = bc[0].rawValue;
-                document.getElementById('aBtn').disabled = false;
-                analyseText(bc[0].rawValue);
-                return;
-              }
-            } catch(e) {}
-          }
-        }
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-
-      // If no BarcodeDetector, show hint after 5s
-      if (!detector) {
-        setTimeout(() => setScanSt('Live detection not supported in this browser. Try Upload Photo instead.'), 5000);
-      }
-    } catch(e) {
-      setScanSt('Camera error: ' + (e.message || 'Permission denied'));
-    }
-  }
-  function flipCam() {
-    camIdx = (camIdx+1) % scanCams.length;
-    startCam(scanCams[camIdx].deviceId);
-  }
-
-  // ── Upload ─────────────────────────────────────────────────────────────────────────────
-  function openUpload() { document.getElementById('uploadModal').classList.add('open'); }
-  function closeUpload() { document.getElementById('uploadModal').classList.remove('open'); }
-  function setImgSt(m,t) {
-    const el=document.getElementById('imgSt');
-    if(!m){el.style.display='none';return;}
-    el.style.display='block'; el.textContent=m;
-    el.style.background=t==='ok'?'rgba(45,106,45,.2)':t==='err'?'rgba(139,26,26,.2)':'rgba(212,169,106,.1)';
-    el.style.color=t==='ok'?'#7ecf7e':t==='err'?'#e07070':'#d4a96a';
-    el.style.border='1px solid '+(t==='ok'?'rgba(126,207,126,.4)':'rgba(212,169,106,.3)');
-  }
-  function loadImg(file) {
-    if (!file||!file.type.startsWith('image/')) return;
-    imgMime = file.type||'image/jpeg';
-    const r = new FileReader();
-    r.onload = e => {
-      imgB64 = e.target.result.split(',')[1];
-      const img = document.getElementById('prevImg');
-      img.src=e.target.result; img.style.display='block';
-      document.getElementById('dropHint').style.display='none';
-      document.getElementById('extBtn').style.display='block';
-      document.getElementById('retBtn').textContent='🔄 Retake';
-      setImgSt('');
-    };
-    r.readAsDataURL(file);
-  }
-  function handleDrop(e) { e.preventDefault(); loadImg(e.dataTransfer.files[0]); }
-  function resetImg() {
-    imgB64=null;
-    document.getElementById('prevImg').style.display='none';
-    document.getElementById('dropHint').style.display='block';
-    document.getElementById('extBtn').style.display='none';
-    document.getElementById('retBtn').textContent='📁 Browse';
-    setImgSt('');
-    document.getElementById('fileInp').click();
-  }
-  async function extractImg() {
-    if (!imgB64) return;
-    document.getElementById('extBtn').disabled=true;
-    setImgSt('⏳ Reading image…','info');
-    try {
-      const txt = await groq([{role:'user',content:[
-        {type:'image_url',image_url:{url:'data:'+imgMime+';base64,'+imgB64}},
-        {type:'text',text:'Look at this book image (barcode/cover/spine). Extract the ISBN and/or title and author. Reply ONLY JSON: {\"isbn\":\"\",\"title\":\"\",\"author\":\"\"}'}
-      ]}], VM, 300);
-      const p = parseJ(txt);
-      const q = (p.isbn||'').trim() || [p.title,p.author].filter(Boolean).join(' ');
-      if (!q) throw new Error('Could not identify book — try a clearer photo.');
-      setImgSt('✅ Found: '+q,'ok');
-      setTimeout(() => { closeUpload(); document.getElementById('qInp').value=q; document.getElementById('aBtn').disabled=false; analyseText(q); },600);
-    } catch(e) { setImgSt('⚠️ '+e.message,'err'); }
-    finally { document.getElementById('extBtn').disabled=false; }
-  }
-
-  // ── Analyse ───────────────────────────────────────────────────────────────────────
-  function analyse() { const q=document.getElementById('qInp').value.trim(); if(q) analyseText(q); }
-
-  async function analyseText(sq) {
-    startLoad();
-    try {
-      const raw = await groq([
-        {role:'system', content:'You are a book expert and child safety reviewer. Always reply with only valid JSON, no markdown, no extra text.'},
-        {role:'user',   content:`Book: "${sq}". Target age: ${age}.
-Fill every field. No empty strings. No "unknown". Verdict must start with "Yes, appropriate for" or "Not recommended for".
-Reply ONLY valid JSON:
-{"book":{"title":"","author":"","genre":"","year":"","pages":""},"summary":"3-5 sentence plot summary","themes":["theme1","theme2","theme3"],"ageCheck":{"verdict":"","reason":"2-3 sentences","evidence":[{"type":"Theme or Content or Language","text":"specific example"}]}}`}
-      ], TM, 1200);
-      stopLoad();
-      const p = parseJ(raw);
-      document.getElementById('qInp').value = p.book?.title || sq;
-      document.getElementById('aBtn').disabled = false;
-      renderResults(p);
-    } catch(e) { showErr(e.message); }
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────────────────
-  function renderResults(p) {
-    stopLoad(); hide('loadCard'); show('inputCard');
-    const ok = /yes|appropriate|suitable/i.test(p.ageCheck?.verdict||'');
-    const A=ok?'#1a6b2a':'#a01818', BD=ok?'#7ecf7e':'#e07070';
-    const BG=ok?'#f0fbf2':'#fdf0f0';
-    const BH=ok?'linear-gradient(135deg,#e6f7ea,#c8eecc)':'linear-gradient(135deg,#fce8e8,#f5c6c6)';
-    const BI=ok?'linear-gradient(160deg,#1a6b2a,#2d8a3e)':'linear-gradient(160deg,#a01818,#c0392b)';
-    const BB=ok?'linear-gradient(135deg,#1a6b2a,#2d8a3e)':'linear-gradient(135deg,#a01818,#c0392b)';
-    const BE=ok?'#f2fcf4':'#fdf4f4', BEb=ok?'#a8ddb0':'#e8a8a8';
-    const TB=ok?'#d4f0d8':'#fadddd', TBd=ok?'#7ecf7e':'#e07070', TC=ok?'#1a5c26':'#8b1a1a';
-
-    const evH = (p.ageCheck?.evidence||[]).map(ev=>
-      `<div style="background:${BE};border:1px solid ${BEb};border-left:4px solid ${A};border-radius:6px;padding:7px 11px;margin-top:6px;font-size:12.5px;color:#2a1200;line-height:1.7">`
-      +(ev.type?`<span style="font-size:10px;text-transform:uppercase;font-weight:700;color:${A};margin-right:4px">[${esc(ev.type)}]</span>`:'')+esc(ev.text)+'</div>'
-    ).join('');
-
-    const rc = document.getElementById('resCard');
-    rc.style.cssText = `background:${BG};border:2px solid ${BD};box-shadow:0 8px 40px ${ok?'rgba(30,120,50,.18)':'rgba(160,24,24,.18)'};border-radius:16px;padding:20px 18px;`;
-
-    rc.innerHTML =
-       `<div style="background:${BB};border-radius:10px;padding:13px 17px;margin-bottom:15px;display:flex;align-items:center;gap:12px">
-          <div style="font-size:30px">${ok?'✅':'🚫'}</div>
-          <div><div style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:#fff">${esc(p.ageCheck?.verdict)}</div>
-          <div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px">Age appropriateness verdict</div></div></div>`
-      +`<div style="display:flex;gap:13px;align-items:flex-start;background:${BH};border:1.5px solid ${BD};border-radius:12px;padding:13px 15px;margin-bottom:13px">
-          <div style="min-width:58px;width:58px;height:82px;flex-shrink:0;background:${BI};border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:2px 4px 10px rgba(0,0,0,.2)">📖</div>
-          <div><div style="font-size:17px;font-weight:700;color:#1a0d05;line-height:1.3;margin-bottom:3px">${esc(p.book?.title)}</div>
-          <div style="font-size:13px;color:#5a3020;margin-bottom:2px">by ${esc(p.book?.author)}</div>
-          ${p.book?.genre?`<div style="font-size:11px;color:#7a4030;margin-bottom:1px">${esc(p.book.genre)}</div>`:''}
-          ${p.book?.pages?`<div style="font-size:11px;color:#7a4030">${esc(p.book.pages)} pages · ${esc(p.book.year)}</div>`:''}</div></div>`
-      +(p.summary?`<div style="background:#fffaf3;border:1.5px solid #e8d5b7;border-radius:10px;padding:12px 15px;margin-bottom:12px"><div style="font-size:12.5px;font-weight:700;color:#5a2d00;margin-bottom:5px">📝 Summary</div><div style="font-size:13px;color:#3a2010;line-height:1.85">${esc(p.summary)}</div></div>`:'')
-      +(p.themes?.length?`<div style="background:#fffaf3;border:1.5px solid #e8d5b7;border-radius:10px;padding:12px 15px;margin-bottom:12px"><div style="font-size:12.5px;font-weight:700;color:#5a2d00;margin-bottom:7px">🎭 Content Themes</div><div>${p.themes.map(t=>`<span style="display:inline-block;background:${TB};border:1px solid ${TBd};border-radius:20px;padding:3px 10px;font-size:11.5px;color:${TC};margin:2px">${esc(t)}</span>`).join('')}</div></div>`:'')
-      +`<div style="background:${ok?'#eaf7ec':'#faeaea'};border:1.5px solid ${BD};border-radius:10px;padding:12px 15px;margin-bottom:12px">
-          <div style="font-size:12.5px;font-weight:700;color:${A};margin-bottom:5px">📋 Why?</div>
-          <div style="font-size:13px;color:#2a1200;line-height:1.8">${esc(p.ageCheck?.reason)}</div>${evH}</div>`
-      +`<div style="display:flex;gap:8px;margin-top:11px">
-          <button class="ghost-btn" style="border-color:${BD};color:${A}" onclick="openScanner()">📷 Scan</button>
-          <button class="ghost-btn" style="border-color:${BD};color:${A}" onclick="openUpload()">🖼️ Upload</button>
-          <button class="ghost-btn" style="border-color:${BD};color:${A}" onclick="resetAll()">🔄 Reset</button></div>`
-      +`<div style="font-size:11px;color:#a07040;font-style:italic;border-top:1px solid #e8d5b7;padding-top:9px;margin-top:10px">ℹ️ Powered by Groq + Llama. Verify independently.</div>`;
-
-    show('resSection'); hide('hint');
-  }
-
-  function resetAll() {
-    document.getElementById('qInp').value='';
-    document.getElementById('aBtn').disabled=true;
-    hide('resSection'); hide('errBox'); show('hint'); imgB64=null;
-  }
-</script>
+  <!-- App -->
+  <script type="module" src="./js/app.js"></script>
 </body>
 </html>
