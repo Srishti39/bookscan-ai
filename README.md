@@ -1,145 +1,124 @@
 # 📚 BookScan AI
 
-> Scan any book. Get an instant summary and an age-appropriateness verdict powered by AI.
+> Is this book right for your reader? Scan a title, author, or ISBN and get a warm, age-aware verdict with themes, content notes, and similar reads — in seconds.
 
-BookScan AI is a lightweight web app that helps you decide if a book is a good fit for a specific age group — perfect for parents picking gifts, teachers building reading lists, or anyone who wants a quick vibe-check on a book before buying.
-
-Point your phone's camera at the barcode, upload a photo of the cover, or just type the title — the app calls a free Groq LLM to fetch book metadata, summarise the plot, surface the major themes, and deliver a clear ✅ green or 🚫 red age verdict with supporting evidence.
-
-**🌐 Live demo:** [bookscan-ai.vercel.app](https://bookscan-ai.vercel.app) *(or your own Vercel URL)*
+**Live demo:** https://bookscan-ai.vercel.app/  
+**Stack:** Vanilla JS (ES modules) · CSS custom properties · Groq LLM · Open Library · Vercel serverless
 
 ---
 
 ## ✨ Features
 
-- **📷 Live barcode scanner** — real-time ISBN detection via the browser's native `BarcodeDetector` API (works best on mobile Chrome / Android)
-- **🖼️ Photo upload** — drag or snap a photo of the barcode, cover, or spine; a vision model reads it for you (great on desktop where webcams struggle with barcodes)
-- **⌨️ Manual search** — type any title, author, or ISBN
-- **👤 Age targeting** — pick from Child (6-8), Preteen (9-12), Teen (13-17), or Adult 18+
-- **✅ / 🚫 Color-coded verdict** — the whole result card turns green when appropriate, red when not
-- **📝 Rich analysis** — plot summary, content themes as chips, reasoning, and specific evidence passages
-- **🔐 Bring-your-own-key** — each visitor enters their own Groq API key, stored only in their browser's localStorage
+- 🔎 **Smart lookup** — search by title, author, or ISBN (auto-detected).
+- 🎯 **Age-aware guidance** — three reading profiles (Kid 6–10, Teen 11–15, Adult 16+).
+- 🧠 **AI verdict** — short summary, themes, content notes, reading level, and discussion questions.
+- 📷 **Live ISBN scanner** — uses the browser BarcodeDetector API where available.
+- 🕒 **Local scan history** — recent scans are saved to your browser (never a server).
+- 🌗 **Dark / light theme** — toggle in the header, preference remembered.
+- ⌨️ **Keyboard shortcuts** — \`/\` focuses search, \`Esc\` closes overlays, \`Ctrl/Cmd+Enter\` runs the scan.
+- ♿ **Accessible by default** — ARIA roles, focus management, and reduced-motion support.
 
 ---
 
-## 🧰 Tech Stack
+## 🗂️ Project structure
 
-| Layer    | Choice                                                           |
-|----------|------------------------------------------------------------------|
-| Frontend | Vanilla HTML / CSS / JS — zero build, zero dependencies          |
-| Scanner  | Native `BarcodeDetector` Web API                                  |
-| LLM      | Groq ([llama-3.3-70b-versatile](https://groq.com))               |
-| Vision   | Groq (`meta-llama/llama-4-scout-17b-16e-instruct`)               |
-| Backend  | Single Vercel Serverless Function (`api/groq.js`) as CORS proxy  |
-| Hosting  | Vercel (Hobby tier, free)                                        |
-
----
-
-## 📁 Project Structure
-
-```
+\`\`\`
 bookscan-ai/
-├── index.html       # Entire frontend (UI + scanner + analysis logic)
 ├── api/
-│   └── groq.js      # Serverless proxy → forwards requests to Groq
-├── vercel.json      # Vercel config (empty {}; auto-detection)
+│   └── groq.js          # Vercel serverless proxy for the Groq API
+├── css/
+│   └── styles.css       # Design tokens + layout + components
+├── js/
+│   ├── app.js           # Main controller (boots everything)
+│   ├── scanner.js       # Open Library lookup + camera barcode
+│   ├── groq.js          # Client for /api/groq (builds prompt, parses JSON)
+│   ├── ui.js            # Rendering helpers (skeleton, verdict, history)
+│   ├── toast.js         # Toast notification system
+│   └── storage.js       # localStorage wrapper + scan history
+├── index.html           # Semantic shell — loads CSS + JS modules
+├── vercel.json          # Platform config
 └── README.md
-```
+\`\`\`
+
+All JS files are native ES modules (\`<script type="module">\`). No bundler required.
 
 ---
 
-## 🚀 Deploy Your Own Copy
+## 🚀 Deploy to Vercel (one-click)
 
-### 1. Fork or clone this repo
+1. Fork / clone this repo.
+2. In Vercel, **Import Project** → select the repo.
+3. Add an environment variable:
+   - \`GROQ_API_KEY\` — your Groq API key (get one at https://console.groq.com).
+4. Click **Deploy**.
 
-```bash
-git clone https://github.com/Srishti39/bookscan-ai.git
-```
-
-### 2. Get a free Groq API key
-
-1. Go to [console.groq.com](https://console.groq.com) → **API Keys** → **Create API Key**
-2. Copy the key (starts with `gsk_...`)
-3. Keep it private — never commit it to Git
-
-### 3. Deploy to Vercel
-
-1. Sign in at [vercel.com](https://vercel.com) with GitHub
-2. Click **Add New → Project** and import your fork
-3. Leave all defaults (framework: *Other*, root dir: `./`) and click **Deploy**
-4. Your app goes live in ~30 seconds
-
-No environment variables required — each visitor pastes their own Groq key on the first-launch screen.
+The serverless function in \`api/groq.js\` reads \`GROQ_API_KEY\` from env and forwards the request so your key never ships to the browser.
 
 ---
 
-## 💻 Run Locally
+## 💻 Local development
 
-Because everything is static HTML + one serverless function, you can run it with the Vercel CLI:
+Because this app uses ES modules and a serverless function, the easiest way to run it locally is:
 
-```bash
+\`\`\`bash
 npm i -g vercel
 vercel dev
-```
+\`\`\`
 
-Then open [http://localhost:3000](http://localhost:3000).
+Then open http://localhost:3000.
 
-Or, if you just want to hack on the UI without the proxy, you can open `index.html` directly in a browser — the Groq calls will fail (CORS), but everything else renders.
+If you only want to preview the UI (no AI calls), any static server works:
 
----
-
-## 🔄 How It Works
-
-```
-┌───────────┐   ISBN / title / photo    ┌──────────────────────┐
-│  Browser  │ ────────────────────────▶ │  /api/groq (Vercel)  │
-│  (HTML)   │                           │   serverless proxy   │
-└───────────┘                           └──────────┬───────────┘
-      ▲                                             │
-      │                                             ▼
-      │           JSON verdict + summary     ┌─────────────┐
-      └───────────────────────────────────── │  Groq API   │
-                                             │  Llama 3.3  │
-                                             └─────────────┘
-```
-
-1. User enters an ISBN / title, or uploads a photo
-2. If it's a photo, the vision model extracts ISBN / title / author
-3. The proxy forwards a chat-completion request to Groq with the user's API key (via `X-Groq-Key` header)
-4. Groq replies with a strict-JSON verdict: `{ book, summary, themes, ageCheck }`
-5. The UI renders it green (appropriate) or red (not recommended)
+\`\`\`bash
+npx serve .
+\`\`\`
 
 ---
 
-## 🔐 Privacy & Security
+## 🧩 How it works
 
-- **Your Groq API key stays on your device.** It's stored in your browser's `localStorage` and sent to the Vercel proxy only as a request header (never logged, never committed).
-- **The proxy doesn't persist anything** — it's a stateless pass-through to Groq.
-- **No analytics, no cookies, no third-party trackers.**
-- If you share your live URL with a friend, they'll be prompted to enter *their own* Groq key on first launch.
+\`\`\`
+ ┌───────────────┐    1. lookup     ┌───────────────────┐
+ │   Browser     │ ───────────────▶ │  Open Library     │
+ │ (index.html)  │ ◀─────────────── │  book metadata    │
+ └──────┬────────┘                  └───────────────────┘
+        │ 2. POST /api/groq { book, age }
+        ▼
+ ┌───────────────────────────┐    3. /chat/completions   ┌──────────┐
+ │ Vercel function api/groq  │ ───────────────────────▶ │   Groq   │
+ │   (uses GROQ_API_KEY)     │ ◀─────────────────────── │  (LLM)   │
+ └───────────────┬───────────┘                          └──────────┘
+                 │ 4. JSON verdict
+                 ▼
+          rendered in the UI
+\`\`\`
+
+---
+
+## 🔒 Privacy
+
+- Your Groq API key lives **only** on the server as a Vercel env variable.
+- Scan history is kept in \`localStorage\` in your browser.
+- No analytics, no tracking, no third-party cookies.
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] Save scan history locally so you can revisit past lookups
-- [ ] Offline mode for the UI shell (PWA)
-- [ ] Book-cover image results pulled from Open Library
-- [ ] Multi-language support for summaries
-- [ ] Shareable verdict cards (export as PNG)
+- [ ] Offline-friendly PWA install
+- [ ] Export history as CSV / Markdown
+- [ ] Parent / teacher profiles with multiple readers
+- [ ] Reading-level comparison between books
+- [ ] Multilingual UI
 
 ---
 
 ## 🤝 Contributing
 
-PRs and issues welcome! If you find a book where the AI's verdict feels off, open an issue with the title, your target age, and the response you got — it really helps tune the prompts.
+Issues and PRs are welcome. The codebase is intentionally small and dependency-free, so it should be easy to dive in.
 
 ---
 
 ## 📄 License
 
-MIT — do whatever you want, just don't blame me if the AI gives a weird reading recommendation. 😉
-
----
-
-*Built with curiosity by [@Srishti39](https://github.com/Srishti39) · Powered by Groq + Llama 3.3*
+MIT © 2026 Srishti
